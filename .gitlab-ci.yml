@@ -1,0 +1,42 @@
+# GitLab CI pipeline for Litmus Chaos Argo Plugin
+stages:
+  - build
+  - publish-storage
+
+variables:
+  GO_VERSION: "1.23"
+  BINARY_NAME: "litmus-chaos-argo-plugin"
+
+# Build job
+build:
+  stage: build
+  image: golang:1.23
+  before_script:
+    # Download Go modules
+    - go mod tidy
+    - go mod download
+    - go mod verify
+  script:
+    # Build the binary with the exact same command as the working OpenSearch plugin
+    - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ${BINARY_NAME} main.go
+    - ls -la ${BINARY_NAME}
+    # Make it executable
+    - chmod +x ${BINARY_NAME}
+    # Final verification
+    - ls -la ${BINARY_NAME}
+  artifacts:
+    name: "${BINARY_NAME}"
+    paths:
+      - ${BINARY_NAME}
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+    - tags
+
+publish-storage:
+  stage: publish-storage
+  image: google/cloud-sdk:alpine
+  script:
+    - gsutil cp ${BINARY_NAME} gs://argo-rollouts-plugin-hml/${BINARY_NAME}
