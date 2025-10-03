@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: chaos-mesh-experiment-analysis
+  namespace: default
+spec:
+  args:
+    - name: replica-set-hash
+    - name: chaos-spec
+  metrics:
+    - name: chaos-mesh-test
+      provider:
+        plugin:
+          argo-rollouts-chaos-mesh-plugin:
+            # Configuração do experimento de caos (YAML como string)
+            chaosExperimentCRD: "{{args.chaos-spec}}"
+            # Label para identificar o ReplicaSet target
+            targetReplicaSetLabel: "rollouts-pod-template-hash"
+            # Valor da label (injetado dinamicamente pelo Argo Rollouts)
+            targetReplicaSetValue: "{{args.replica-set-hash}}"
+            # Timeout para o experimento (opcional, padrão: 5m)
+            timeout: "10m"
+            # Limpar experimento após conclusão (opcional, padrão: true)
+            cleanupOnFinish: true

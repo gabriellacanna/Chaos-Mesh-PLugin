@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: demo-app
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+      - name: demo-app
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+  strategy:
+    canary:
+      steps:
+      # Passo 1: Deploy com 0% de tráfego + Traffic Mirroring
+      - setWeight: 0
+      - experiment:
+          duration: 3m
+          templates:
+          - name: chaos-experiment
+            specRef: stable
+          analyses:
+          - name: run-chaos-test
+            templateName: chaos-mesh-experiment-analysis
+            args:
+            # Argo Rollouts injeta automaticamente o hash do novo ReplicaSet
+            - name: replica-set-hash
+              value: "{{rollouts.new.podTemplateHash}}"
+            # Definição do experimento de caos
+            - name: chaos-spec
+              value: |
+                apiVersion: chaos-mesh.org/v1alpha1
+                kind: PodChaos
+                metadata:
+                  name: pod-kill-experiment-{{rollouts.new.podTemplateHash}}
+                  namespace: default
+                spec:
+                  action: pod-kill
+                  mode: one
+                  # O plugin irá injetar o selector automaticamente
+                  selector:
+                    namespaces:
+                      - default
+                  scheduler:
+                    cron: "@every 30s"
+                  duration: "2m"
+      
+      # Passo 2: Se o caos passou, inicia rollout real
+      - setWeight: 25
+      - pause: { duration: 1m }
+      - setWeight: 50
+      - pause: { duration: 1m }
+      - setWeight: 75
+      - pause: { duration: 1m }
+      - setWeight: 100

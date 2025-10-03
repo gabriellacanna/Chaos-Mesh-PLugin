@@ -167,11 +167,6 @@ func (r *RpcPlugin) Terminate(analysisRun *v1alpha1.AnalysisRun, metric v1alpha1
 	r.LogCtx.Info("Terminating chaos experiment measurement")
 	
 	// Try to cleanup the experiment if it exists
-	config, err := r.parseConfig(metric)
-	if err != nil {
-		r.LogCtx.Errorf("Failed to parse config during termination: %v", err)
-		return measurement
-	}
 
 	if experimentName, exists := measurement.Metadata["experimentName"]; exists {
 		experimentNamespace := measurement.Metadata["experimentNamespace"]
