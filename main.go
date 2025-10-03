@@ -1,11 +1,18 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
+
 	"github.com/gabriellacanna/chaos-mesh-plugin/internal/plugin"
 	rolloutsPlugin "github.com/argoproj/argo-rollouts/metricproviders/plugin/rpc"
 	goPlugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
 )
+
+// Version is set during build time via ldflags
+var version = "dev"
 
 // handshakeConfigs are used to just do a basic handshake between
 // a plugin and host. If the handshake fails, a user friendly error is shown.
@@ -18,7 +25,16 @@ var handshakeConfig = goPlugin.HandshakeConfig{
 }
 
 func main() {
-	logCtx := *log.WithFields(log.Fields{"plugin": "chaos-mesh"})
+	// Handle version flag
+	var showVersion = flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("Chaos Mesh Plugin for Argo Rollouts\nVersion: %s\n", version)
+		os.Exit(0)
+	}
+
+	logCtx := *log.WithFields(log.Fields{"plugin": "chaos-mesh", "version": version})
 
 	rpcPluginImp := &plugin.RpcPlugin{
 		LogCtx: logCtx,
